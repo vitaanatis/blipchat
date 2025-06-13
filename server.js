@@ -16,17 +16,16 @@ const io = new socketIo.Server(server, {
 
 // --- Room Configuration ---
 const ROOMS = {
-    GENERAL: 'General',
-    TECH_TALK: 'Tech Talk',
+    ROOM1: 'Room 1',      // Changed from GENERAL
+    ROOM2: 'Room 2',      // Changed from TECH_TALK
     ADMIN_ROOM: 'Admin Room'
 };
 const ADMIN_PASSWORD = 'o5i'; // Password for the Admin Room
 
 // In-memory storage for message history per room
-// Each history will be an array of message objects: { id: 'clientId', username: 'Name', text: 'Message content', room: 'RoomName' }
 const roomsHistory = {
-    [ROOMS.GENERAL]: [],
-    [ROOMS.TECH_TALK]: [],
+    [ROOMS.ROOM1]: [],    // Changed key
+    [ROOMS.ROOM2]: [],    // Changed key
     [ROOMS.ADMIN_ROOM]: []
 };
 const MAX_MESSAGES_PER_ROOM = 25; // Keep only the last 25 messages per room
@@ -64,13 +63,19 @@ io.on('connection', (socket) => {
             socket.emit('roomJoinFailed', 'Incorrect password for Admin Room.');
             return;
         }
+        
+        // Ensure the requested room is one of our defined rooms
+        if (!Object.values(ROOMS).includes(roomName)) {
+            console.warn(`${socket.id} attempted to join an invalid room: ${roomName}`);
+            socket.emit('roomJoinFailed', 'Invalid room name.');
+            return;
+        }
 
         // Join the new room
         socket.join(roomName);
         socket.currentRoom = roomName;
         
-        // --- NEW: Optional, store username on socket for easier access ---
-        // This makes sure the username is available for system messages
+        // Optional, store username on socket for easier access
         if (data.username) {
             socket.username = data.username;
         }
@@ -92,7 +97,6 @@ io.on('connection', (socket) => {
     });
 
     // Listen for 'chat message' events from the client
-    // msg is an object: { id: 'clientId', username: 'Name', text: 'Message content', room: 'RoomName' }
     socket.on('chat message', (msg) => {
         // Basic validation: ensure msg is an object and has required properties
         if (typeof msg === 'object' && msg.text && msg.username && msg.room) {
@@ -100,7 +104,9 @@ io.on('connection', (socket) => {
             
             // Add message object to history for the specific room
             if (!roomsHistory[msg.room]) {
-                roomsHistory[msg.room] = []; // Initialize if room history doesn't exist (shouldn't happen with predefined rooms)
+                // This case should ideally not happen if client always sends valid room names
+                console.warn(`Attempted to save message to non-existent room history: ${msg.room}`);
+                roomsHistory[msg.room] = []; 
             }
             roomsHistory[msg.room].push(msg);
 
