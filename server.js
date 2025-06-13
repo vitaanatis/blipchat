@@ -1,4 +1,5 @@
-// server.js (or index.js) - This file goes into your GitHub repository
+// server.js (or index.js) - UPDATE THIS FILE IN YOUR GITHUB REPO
+
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -7,19 +8,16 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 
-// Configure CORS for Socket.IO
-// VERY IMPORTANT for Playcode to connect
 const io = new socketIo.Server(server, {
     cors: {
-        origin: "*", // Allows connections from any origin. For production, you'd specify your Playcode/GitHub Pages URL.
+        origin: "*", // Still allows connections from any origin
         methods: ["GET", "POST"]
     }
 });
 
-// Serve static files from a 'public' directory if you have any,
-// though for a pure API/Socket.IO backend, this might not be strictly necessary.
-// If you want to serve a simple HTML file to test the server directly, uncomment:
-// app.use(express.static(path.join(__dirname, 'public')));
+// --- NEW: In-memory array to store chat messages ---
+const messages = []; // This will hold our chat history
+const MAX_MESSAGES = 50; // Keep only the last 50 messages in memory
 
 // Basic route for health check
 app.get('/', (req, res) => {
@@ -30,9 +28,21 @@ app.get('/', (req, res) => {
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
+    // --- NEW: Send existing messages to the newly connected client ---
+    // This uses socket.emit (to specific client) instead of io.emit (to all clients)
+    socket.emit('history', messages);
+
     // Listen for 'chat message' events from the client
     socket.on('chat message', (msg) => {
         console.log('Message received:', msg);
+
+        // --- NEW: Add message to history ---
+        messages.push(msg);
+        // Trim history if it exceeds MAX_MESSAGES
+        if (messages.length > MAX_MESSAGES) {
+            messages.shift(); // Remove the oldest message
+        }
+
         // Broadcast the message to all connected clients, including the sender
         io.emit('chat message', msg);
     });
@@ -43,7 +53,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// Define the port to listen on. Render will provide this via process.env.PORT
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
