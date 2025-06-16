@@ -20,7 +20,7 @@ const ROOMS = {
     ROOM2: 'Room 2',      // Changed from TECH_TALK
     ADMIN_ROOM: 'Admin Room'
 };
-const ADMIN_PASSWORD = 'o5i'; // Password for the Admin Room
+const ADMIN_PASSWORD = 'aqua'; // Password for the Admin Room
 
 // In-memory storage for message history per room
 const roomsHistory = {
